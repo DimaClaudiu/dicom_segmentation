@@ -85,6 +85,19 @@ def extract_segmentation_as_image(layer, segmentation, border=20):
     return minor_img, min_x, min_y
 
 
+def prepare_image(image, adjust_contrast=True, denoise=True, blur=True):
+    if adjust_contrast:
+        image = cv2.convertScaleAbs(image, alpha=1.3, beta=0)
+
+    if denoise:
+        image = cv2.fastNlMeansDenoising(image, None, 30, 7, 21)
+
+    if blur:
+        image = cv2.blur(image, (2, 2))
+
+    return image
+
+
 def main():
     test_dir = 'tests/input1/'
     layer, seg = read_input(test_dir + 'in.in', test_dir + 'seg.in')
@@ -94,12 +107,9 @@ def main():
     minor_img, min_x, min_y = extract_segmentation_as_image(
         layer, seg, border=60)
 
-    contour = get_contour(seg)
+    adjusted = prepare_image(minor_img)
 
-    cv2.imshow('contour', contour)
-    cv2.waitKey()
-
-    cv2.imshow('extraction', minor_img)
+    cv2.imshow('adjusted', adjusted)
     cv2.waitKey()
 
 
