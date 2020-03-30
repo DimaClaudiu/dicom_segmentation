@@ -15,7 +15,7 @@ def read_input(dicom_file_path, seg_file_path):
 
 def get_contour(segmentation):
     width, height = segmentation.shape
-    contour = np.zeros((width, height, 1), np.uint8)
+    contour = np.zeros((width, height), np.uint8)
 
     for x in range(width):
         for y in range(height):
@@ -75,7 +75,7 @@ def extract_segmentation_as_image(layer, segmentation, border=20):
     width = max_x - min_x
     height = max_y - min_y
 
-    minor_img = np.zeros((width, height, 1), np.uint8)
+    minor_img = np.zeros((width, height), np.uint8)
     offset = int(avg_segmentation_value(layer, segmentation) - 256/2)
     for i in range(min_x, max_x):
         for j in range(min_y, max_y):
@@ -103,14 +103,26 @@ def main():
     layer, seg = read_input(test_dir + 'in.in', test_dir + 'seg.in')
 
     avg = avg_segmentation_value(layer, seg)
+    print(avg)
 
     minor_img, min_x, min_y = extract_segmentation_as_image(
         layer, seg, border=60)
+
+    min_width, min_height = minor_img.shape
 
     adjusted = prepare_image(minor_img)
 
     cv2.imshow('adjusted', adjusted)
     cv2.waitKey()
+
+    adjusted_avg = avg_segmentation_value(
+        minor_img, seg[min_x:min_x+min_width, min_y:min_y+min_height])
+
+    print(adjusted_avg)
+
+    epsilon = 10
+    thresh = cv2.threshold(
+        adjusted, adjusted_avg-epsilon, adjusted_avg+epsilon, cv2.THRESH_BINARY)
 
 
 if __name__ == '__main__':
