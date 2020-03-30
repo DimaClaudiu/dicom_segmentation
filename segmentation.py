@@ -13,6 +13,22 @@ def read_input(dicom_file_path, seg_file_path):
     return array, seg
 
 
+def get_contour(segmentation):
+    width, height = segmentation.shape
+    contour = np.zeros((width, height, 1), np.uint8)
+
+    for x in range(width):
+        for y in range(height):
+            if segmentation[x, y]:
+                for i in (-1, 0, 1):
+                    for j in (-1, 0, 1):
+                        if segmentation[x+i, y+j] == 0:
+                            contour[x, y] = 255
+                            break
+
+    return contour
+
+
 def avg_segmentation_value(layer, segmentation):
     rows, cols = layer.shape
 
@@ -75,7 +91,13 @@ def main():
 
     avg = avg_segmentation_value(layer, seg)
 
-    minor_img, min_x, min_y = extract_segmentation_as_image(layer, seg)
+    minor_img, min_x, min_y = extract_segmentation_as_image(
+        layer, seg, border=60)
+
+    contour = get_contour(seg)
+
+    cv2.imshow('contour', contour)
+    cv2.waitKey()
 
     cv2.imshow('extraction', minor_img)
     cv2.waitKey()
