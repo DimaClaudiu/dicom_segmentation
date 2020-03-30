@@ -1,4 +1,5 @@
 import numpy as np
+import cv2
 from statistics import geometric_mean
 
 
@@ -24,13 +25,60 @@ def avg_segmentation_value(layer, segmentation):
     return geometric_mean(values)
 
 
+def clamp_to_byte(pixel):
+    if pixel < 0:
+        pixel = 0
+    elif pixel > 255:
+        pixel = 255
+
+    return int(pixel)
+
+
+def extract_segmentation_as_image(layer, segmentation, border=20):
+    rows, cols = layer.shape
+
+    min_x = min_y = max(rows, cols)
+    max_x = max_y = 0
+
+    for i in range(rows):
+        for j in range(cols):
+            if segmentation[i, j]:
+                min_x = min(min_x, i)
+                max_x = max(max_x, i)
+
+                min_y = min(min_y, j)
+                max_y = max(max_y, j)
+
+    border = max(max_x - min_x, max_y - min_y)/border
+
+    min_x = int(max(min_x - border, 0))
+    min_y = int(max(min_y - border, 0))
+    max_x = int(min(max_x + border, rows))
+    max_y = int(min(max_y + border, cols))
+
+    width = max_x - min_x
+    height = max_y - min_y
+
+    minor_img = np.zeros((width, height, 1), np.uint8)
+    offset = int(avg_segmentation_value(layer, segmentation) - 256/2)
+    for i in range(min_x, max_x):
+        for j in range(min_y, max_y):
+            normalized_pixel = layer[i, j] - offset
+            minor_img[i - min_x, j - min_y] = clamp_to_byte(normalized_pixel)
+
+    return minor_img, min_x, min_y
+
+
 def main():
     test_dir = 'tests/input1/'
     layer, seg = read_input(test_dir + 'in.in', test_dir + 'seg.in')
 
     avg = avg_segmentation_value(layer, seg)
 
-    print(avg)
+    minor_img, min_x, min_y = extract_segmentation_as_image(layer, seg)
+
+    cv2.imshow('extraction', minor_img)
+    cv2.waitKey()
 
 
 if __name__ == '__main__':
