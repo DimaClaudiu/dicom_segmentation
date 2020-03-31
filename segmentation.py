@@ -138,6 +138,39 @@ def get_mask_watershed(image, thresh, aprox_seg):
     return mask
 
 
+def smooth_edges(image, strength=3):
+    kernel = np.ones((4, 4), np.uint8)
+    width, height = image.shape
+
+    bordersize = int(0.25 * width)
+    smoothed = cv2.copyMakeBorder(
+        image,
+        top=bordersize,
+        bottom=bordersize,
+        left=bordersize,
+        right=bordersize,
+        borderType=cv2.BORDER_CONSTANT,
+        value=0
+    )
+    cv2.imshow('brd', smoothed)
+    cv2.waitKey()
+
+    smoothed = cv2.dilate(smoothed, kernel, iterations=1)
+
+    smoothed = cv2.blur(smoothed, (6, 6))
+
+    ret, smoothed = cv2.threshold(
+        smoothed, 128, 255, cv2.THRESH_BINARY)
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (10, 10))
+    (thresh, binRed) = cv2.threshold(smoothed, 128, 255, cv2.THRESH_BINARY)
+    smoothed = cv2.morphologyEx(smoothed, cv2.MORPH_OPEN, kernel, iterations=2)
+    smoothed = cv2.morphologyEx(
+        smoothed, cv2.MORPH_CLOSE, kernel, iterations=2)
+
+    return smoothed[bordersize:bordersize+width, bordersize:bordersize+height]
+
+
 def main():
     test_dir = 'tests/input1/'
     layer, seg = read_input(test_dir + 'in.in', test_dir + 'seg.in')
@@ -145,7 +178,7 @@ def main():
     avg = avg_segmentation_value(layer, seg)
 
     minor_img, min_x, min_y = extract_segmentation_as_image(
-        layer, seg, border=60)
+        layer, seg, border=20)
 
     min_width, min_height = minor_img.shape
 
@@ -164,7 +197,9 @@ def main():
     water = get_mask_watershed(
         adjusted, thresh, seg[min_x:min_x+min_width, min_y:min_y+min_height])
 
-    cv2.imshow('water', water*255)
+    mask = smooth_edges(water*255)
+
+    cv2.imshow('water', mask)
     cv2.waitKey()
 
 
