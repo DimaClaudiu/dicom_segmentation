@@ -25,6 +25,22 @@ def avg_segmentation_value(layer, segmentation):
     return geometric_mean(values)
 
 
+def get_contour(segmentation):
+    width, height = segmentation.shape
+    contour = np.zeros((width, height), np.uint8)
+
+    for x in range(width):
+        for y in range(height):
+            if segmentation[x, y]:
+                for i in (-1, 0, 1):
+                    for j in (-1, 0, 1):
+                        if segmentation[x+i, y+j] == 0:
+                            contour[x, y] = 255
+                            break
+
+    return contour
+
+
 def clamp_to_byte(pixel):
     if pixel < 0:
         pixel = 0
@@ -59,7 +75,7 @@ def extract_segmentation_as_image(layer, segmentation, border=20):
     width = max_x - min_x
     height = max_y - min_y
 
-    minor_img = np.zeros((width, height, 1), np.uint8)
+    minor_img = np.zeros((width, height), np.uint8)
     offset = int(avg_segmentation_value(layer, segmentation) - 256/2)
     for i in range(min_x, max_x):
         for j in range(min_y, max_y):
@@ -82,20 +98,44 @@ def prepare_image(image, adjust_contrast=True, denoise=True, blur=True):
     return image
 
 
-def get_contour(segmentation):
-    width, height = segmentation.shape
-    contour = np.zeros((width, height), np.uint8)
+def get_mask_watershed(image, thresh, aprox_seg):
+    width, height = image.shape
 
-    for x in range(width):
-        for y in range(height):
-            if segmentation[x, y]:
-                for i in (-1, 0, 1):
-                    for j in (-1, 0, 1):
-                        if segmentation[x+i, y+j] == 0:
-                            contour[x, y] = 255
-                            break
+    sure_bg = np.zeros((width, height, 1), np.uint8)
+    sure_fg = np.zeros((width, height, 1), np.uint8)
 
-    return contour
+    boxes = []
+    for i in range(width):
+        for j in range(height):
+            coord = i, j
+            sure_bg[coord] = 255
+            if aprox_seg[coord] and thresh[i][j]:
+                sure_fg[coord] = 255
+                boxes.append(coord)
+            elif not aprox_seg[coord] and not thresh[i][j]:
+                sure_bg[coord] = 0
+
+    unknown = cv2.subtract(sure_bg, sure_fg)
+
+    seed = boxes[-1]
+    ret, markers = cv2.connectedComponents(sure_fg)
+
+    # Add one to all labels so that sure background is not 0, but 1
+    markers = markers+1
+
+    # Now, mark the region of unknown with zero
+    markers[unknown == 255] = 0
+
+    backtorgb = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+    markers = cv2.watershed(backtorgb, markers)
+
+    mask = np.zeros((width, height), np.uint8)
+    for i in range(markers.shape[0]):
+        for j in range(markers.shape[1]):
+            if markers[i, j] == 2:
+                mask[i, j] = 1
+
+    return mask
 
 
 def main():
@@ -104,9 +144,27 @@ def main():
 
     avg = avg_segmentation_value(layer, seg)
 
-    minor_img, min_x, min_y = extract_segmentation_as_image(layer, seg)
+    minor_img, min_x, min_y = extract_segmentation_as_image(
+        layer, seg, border=60)
 
-    cv2.imshow('extraction', minor_img)
+    min_width, min_height = minor_img.shape
+
+    adjusted = prepare_image(minor_img, blur=False)
+
+    adjusted_avg = avg_segmentation_value(
+        minor_img, seg[min_x:min_x+min_width, min_y:min_y+min_height])
+
+    epsilon = 0
+    ret, thresh = cv2.threshold(
+        adjusted, adjusted_avg-epsilon, adjusted_avg+epsilon, cv2.THRESH_BINARY)
+
+    kernel = np.ones((3, 3), np.uint8)
+    thresh = cv2.erode(thresh, kernel, iterations=3)
+
+    water = get_mask_watershed(
+        adjusted, thresh, seg[min_x:min_x+min_width, min_y:min_y+min_height])
+
+    cv2.imshow('water', water*255)
     cv2.waitKey()
 
 
