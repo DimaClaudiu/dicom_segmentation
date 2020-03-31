@@ -82,6 +82,22 @@ def prepare_image(image, adjust_contrast=True, denoise=True, blur=True):
     return image
 
 
+def get_contour(segmentation):
+    width, height = segmentation.shape
+    contour = np.zeros((width, height), np.uint8)
+
+    for x in range(width):
+        for y in range(height):
+            if segmentation[x, y]:
+                for i in (-1, 0, 1):
+                    for j in (-1, 0, 1):
+                        if segmentation[x+i, y+j] == 0:
+                            contour[x, y] = 255
+                            break
+
+    return contour
+
+
 def main():
     test_dir = 'tests/input1/'
     layer, seg = read_input(test_dir + 'in.in', test_dir + 'seg.in')
