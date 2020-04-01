@@ -1,3 +1,10 @@
+"""
+Provides organ segmentation given an approximate contour
+This module provides utilities for pre-preocessing dicom
+images, extracting and splitting organs, and segmenting
+a mask for a certain organ
+"""
+
 import numpy as np
 import cv2
 from statistics import geometric_mean
