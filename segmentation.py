@@ -1,9 +1,6 @@
-"""
-Provides organ segmentation given an approximate contour
-This module provides utilities for pre-preocessing dicom
-images, extracting and splitting organs, and segmenting
-a mask for a certain organ
-"""
+"""Provides organ segmentation given an approximate contour This module
+provides utilities for pre-preocessing dicom images, extracting and splitting
+organs, and segmenting a mask for a certain organ."""
 
 import numpy as np
 import cv2
@@ -11,6 +8,15 @@ from statistics import geometric_mean
 
 
 def avg_segmentation_value(layer, segmentation):
+    """Returns the geometric mean of the segmented part of the layer.
+    
+    Arguments:
+        layer {np 2d array} -- Dicom image of an organ
+        segmentation {np 2d binary array} -- Approximate contour of an organ inside layer
+    
+    Returns:
+        float -- The geometric mean of the segemnted organs values.
+    """
     rows, cols = layer.shape
 
     values = []
