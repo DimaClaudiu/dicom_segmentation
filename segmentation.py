@@ -164,7 +164,7 @@ def smooth_edges(image, ksize):
 
     smoothed = cv2.dilate(smoothed, kernel, iterations=1)
 
-    smoothed = cv2.blur(smoothed, ksize)
+    smoothed = cv2.blur(smoothed, tuple([2*x for x in ksize]))
 
     ret, smoothed = cv2.threshold(
         smoothed, 128, 255, cv2.THRESH_BINARY)
@@ -219,10 +219,10 @@ def main():
     thresh = cv2.erode(thresh, kernel, iterations=3)
 
     water = get_mask_watershed(
-        adjusted, thresh, seg[min_x:min_x+min_width, min_y:min_y+min_height])
+        adjusted, thresh, seg[min_x:min_x+min_width, min_y:min_y+min_height], debug=True)
 
 
-    mask = smooth_edges(water*255, (6, 6))
+    mask = smooth_edges(water*255, (4, 4))
 
     major_mask = np.zeros(layer.shape, np.uint8)
     major_mask[min_x:min_x+min_width, min_y:min_y+min_height] = mask
