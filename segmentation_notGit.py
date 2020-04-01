@@ -13,18 +13,6 @@ def read_input(dicom_file_path, seg_file_path):
     return array, seg
 
 
-def avg_segmentation_value(layer, segmentation):
-    rows, cols = layer.shape
-
-    values = []
-    for i in range(rows):
-        for j in range(cols):
-            if segmentation[i, j]:
-                values.append(max(int(layer[i, j]), 1))
-
-    return geometric_mean(values)
-
-
 def get_contour(segmentation):
     width, height = segmentation.shape
     contour = np.zeros((width, height), np.uint8)
@@ -41,6 +29,18 @@ def get_contour(segmentation):
     return contour
 
 
+def avg_segmentation_value(layer, segmentation):
+    rows, cols = layer.shape
+
+    values = []
+    for i in range(rows):
+        for j in range(cols):
+            if segmentation[i, j]:
+                values.append(max(int(layer[i, j]), 1))
+
+    return geometric_mean(values)
+
+
 def clamp_to_byte(pixel):
     if pixel < 0:
         pixel = 0
@@ -50,7 +50,7 @@ def clamp_to_byte(pixel):
     return int(pixel)
 
 
-def extract_segmentation_as_image(layer, segmentation, border_percent=0.05):
+def extract_segmentation_as_image(layer, segmentation, border=20):
     rows, cols = layer.shape
 
     min_x = min_y = max(rows, cols)
@@ -65,12 +65,12 @@ def extract_segmentation_as_image(layer, segmentation, border_percent=0.05):
                 min_y = min(min_y, j)
                 max_y = max(max_y, j)
 
-    border_size = max(max_x - min_x, max_y - min_y) * float(border_percent)
+    border = max(max_x - min_x, max_y - min_y)/border
 
-    min_x = int(max(min_x - border_size, 0))
-    min_y = int(max(min_y - border_size, 0))
-    max_x = int(min(max_x + border_size, rows))
-    max_y = int(min(max_y + border_size, cols))
+    min_x = int(max(min_x - border, 0))
+    min_y = int(max(min_y - border, 0))
+    max_x = int(min(max_x + border, rows))
+    max_y = int(min(max_y + border, cols))
 
     width = max_x - min_x
     height = max_y - min_y
@@ -93,28 +93,38 @@ def prepare_image(image, adjust_contrast=True, denoise=True, blur=True):
         image = cv2.fastNlMeansDenoising(image, None, 20, 7, 21)
 
     if blur:
-        # image = cv2.blur(image, (2, 2))
-        image = cv2.GaussianBlur(image, (2, 2))
+        image = cv2.blur(image, (2, 2))
 
     return image
 
 
-def get_mask_watershed(image, thresh, aprox_seg):
+def get_segmentation_watershed(image, thresh, seg, adjusted_img=None, start_x=0, start_y=0):
     width, height = image.shape
+
+    if adjusted_img is None:
+        adjusted_img = image
+
+    width2, height2 = thresh.shape
 
     sure_bg = np.zeros((width, height, 1), np.uint8)
     sure_fg = np.zeros((width, height, 1), np.uint8)
 
+    contour = get_contour(seg)
     boxes = []
-    for i in range(width):
-        for j in range(height):
+    for i in range(start_x, start_x + width2):
+        for j in range(start_y, start_y + height2):
             coord = i, j
             sure_bg[coord] = 255
-            if aprox_seg[coord] and thresh[i][j]:
+            if seg[coord] and thresh[i-start_x][j - start_y]:
                 sure_fg[coord] = 255
                 boxes.append(coord)
-            elif not aprox_seg[coord] and not thresh[i][j]:
+            elif not seg[coord] and not thresh[i-start_x][j - start_y]:
                 sure_bg[coord] = 0
+
+    # cv2.imshow('fg', sure_fg)
+    # cv2.waitKey()
+    # cv2.imshow('bg', sure_bg)
+    # cv2.waitKey()
 
     unknown = cv2.subtract(sure_bg, sure_fg)
 
@@ -127,38 +137,31 @@ def get_mask_watershed(image, thresh, aprox_seg):
     # Now, mark the region of unknown with zero
     markers[unknown == 255] = 0
 
-    backtorgb = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+    backtorgb = cv2.cvtColor(adjusted_img, cv2.COLOR_GRAY2RGB)
     markers = cv2.watershed(backtorgb, markers)
 
     mask = np.zeros((width, height), np.uint8)
     for i in range(markers.shape[0]):
         for j in range(markers.shape[1]):
             if markers[i, j] == 2:
-                mask[i, j] = 1
+                mask[i, j] = 255
 
     return mask
 
 
-def smooth_edges(image, strength=3):
+def smooth_edges(image, strength=2):
     kernel = np.ones((4, 4), np.uint8)
-    width, height = image.shape
 
-    bordersize = int(0.2 * width)
-    smoothed = cv2.copyMakeBorder(
-        image,
-        top=bordersize,
-        bottom=bordersize,
-        left=bordersize,
-        right=bordersize,
-        borderType=cv2.BORDER_CONSTANT,
-        value=0
-    )
-    cv2.imshow('brd', smoothed)
-    cv2.waitKey()
-
+    smoothed = image
     smoothed = cv2.dilate(smoothed, kernel, iterations=1)
 
+    # smoothed = cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel)
+    # for _ in range(strength):
     smoothed = cv2.blur(smoothed, (6, 6))
+    #     smoothed = cv2.erode(smoothed, kernel, iterations=1)
+    #     smoothed = cv2.dilate(smoothed, kernel, iterations=2)
+
+    #     # smoothed = cv2.dilate(smoothed, kernel, iterations=2)
 
     ret, smoothed = cv2.threshold(
         smoothed, 128, 255, cv2.THRESH_BINARY)
@@ -169,71 +172,70 @@ def smooth_edges(image, strength=3):
     smoothed = cv2.morphologyEx(
         smoothed, cv2.MORPH_CLOSE, kernel, iterations=2)
 
-    cv2.imshow('brd', smoothed)
-    cv2.waitKey()
-
-    return smoothed[bordersize:bordersize+width, bordersize:bordersize+height]
+    return smoothed
 
 
-def show_mask(img_path, mask):
-    dicom = cv2.imread(img_path)
-
+def show_segmentation(image_path, mask):
+    img = cv2.imread(image_path)
     width, height = mask.shape
+
+    cv2.imshow('original', img)
+    cv2.waitKey()
 
     for i in range(width):
         for j in range(height):
-            if mask[i, j]:
-                dicom[i, j] = [0, 60, 0]
+            if(mask[i, j]):
+                img[i, j][1] += 60
 
-    cv2.imshow('final', dicom)
+    cv2.imshow('final', img)
     cv2.waitKey()
 
 
-def main():
-    test_dir = 'tests/input1/'
+def main(test_dir):
     layer, seg = read_input(test_dir + 'in.in', test_dir + 'seg.in')
 
     avg = avg_segmentation_value(layer, seg)
+    print(avg)
 
     minor_img, min_x, min_y = extract_segmentation_as_image(
-        layer, seg, border_percent=0.05)
+        layer, seg, border=60)
 
     min_width, min_height = minor_img.shape
 
     adjusted = prepare_image(minor_img, blur=False)
 
-    cv2.imshow('adj', adjusted)
-    cv2.waitKey()
+    contour = get_contour(seg)
+
+    adj_major_img = np.zeros(layer.shape, np.uint8)
+    adj_major_img[min_x:min_x+min_width, min_y:min_y+min_height] = adjusted
+
+    # cv2.imshow('adjusted', adj_major_img)
+    # cv2.waitKey()
 
     adjusted_avg = avg_segmentation_value(
         minor_img, seg[min_x:min_x+min_width, min_y:min_y+min_height])
+
+    print(adjusted_avg)
 
     epsilon = 0
     ret, thresh = cv2.threshold(
         adjusted, adjusted_avg-epsilon, adjusted_avg+epsilon, cv2.THRESH_BINARY)
 
-    cv2.imshow('adj', thresh)
+    cv2.imshow('thresh', thresh)
     cv2.waitKey()
 
     kernel = np.ones((3, 3), np.uint8)
     thresh = cv2.erode(thresh, kernel, iterations=3)
 
-    water = get_mask_watershed(
-        adjusted, thresh, seg[min_x:min_x+min_width, min_y:min_y+min_height])
+    water = get_segmentation_watershed(
+        layer, thresh, seg, adjusted_img=adj_major_img, start_x=min_x, start_y=min_y)
 
-    cv2.imshow('adj', water*255)
-    cv2.waitKey()
+    mask = smooth_edges(water)
+    cv2.imwrite(test_dir + 'my_seg.png', mask)
 
-    mask = smooth_edges(water*255)
-
-    major_mask = np.zeros(layer.shape, np.uint8)
-    major_mask[min_x:min_x+min_width, min_y:min_y+min_height] = mask
-
-    # cv2.imshow('mjr_msk', major_mask)
-    # cv2.waitKey()
-
-    show_mask(test_dir + 'dicom.png', major_mask)
+    show_segmentation(test_dir + 'dicom.png', mask)
 
 
 if __name__ == '__main__':
-    main()
+    for i in range(3, 4):
+        main('tests/input' + str(i+1) + '/')
