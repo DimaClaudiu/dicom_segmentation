@@ -153,17 +153,17 @@ def prepare_image(image, adjust_contrast=False, denoise=True, blur=True):
 
 
 def get_mask_watershed(image, thresh, aprox_seg, debug=False):
-    """Returns the mask of an accurate segmentation based on a
-    approximate segmentation and an aggresive threshold.
-    
+    """Returns the mask of an accurate segmentation based on a approximate
+    segmentation and an aggresive threshold.
+
     Arguments:
         image {[cv2 image]} -- [The image where the search will be perfomed]
         thresh {[np 2d binary array]} -- [An aggresive threshold mask of the organ]
         aprox_seg {[np 2d binary array]} -- [An aproximate segmentation of the organ]
-    
+
     Keyword Arguments:
         debug {bool} -- [Set True to see the full contours given by watershed] (default: {False})
-    
+
     Returns:
         [np 2d binary array] -- [An accurate mask of the organ]
     """
@@ -228,13 +228,23 @@ def get_mask_watershed(image, thresh, aprox_seg, debug=False):
     return mask
 
 
-def smooth_edges(image, ksize):
-    kernel = np.ones(ksize, np.uint8)
-    width, height = image.shape
+def smooth_edges(mask, ksize):
+    """Smoothes the edges and closes unsual holes inside organs.
 
+    Arguments:
+        mask {[np 2d binary array]} -- [A mask to be cleanned up]
+        ksize {[int touple]} -- [Kernel size, higher values will result in more aggresive smoothing]
+
+    Returns:
+        [np 2d binary array] -- [A cleaned up version of the mask]
+    """
+    kernel = np.ones(ksize, np.uint8)
+    width, height = mask.shape
+
+    # We might "hit the edges" after dilating, so get a overhead
     bordersize = int(0.2 * width)
     smoothed = cv2.copyMakeBorder(
-        image,
+        mask,
         top=bordersize,
         bottom=bordersize,
         left=bordersize,
@@ -243,13 +253,15 @@ def smooth_edges(image, ksize):
         value=[0, 0, 0]
     )
 
+    # Dilating and blurring covers edge artifaces
     smoothed = cv2.dilate(smoothed, kernel, iterations=1)
-
     smoothed = cv2.blur(smoothed, tuple([2*x for x in ksize]))
 
+    # Thresholding gives integer values from the blurs approximates
     ret, smoothed = cv2.threshold(
         smoothed, 128, 255, cv2.THRESH_BINARY)
 
+    # First open the edges and then close all the artifacts and unsual holes
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, ksize)
     ret, smoothed = cv2.threshold(smoothed, 128, 255, cv2.THRESH_BINARY)
     smoothed = cv2.morphologyEx(smoothed, cv2.MORPH_OPEN, kernel, iterations=2)
