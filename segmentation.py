@@ -123,6 +123,20 @@ def extract_segmentation_as_image(layer, segmentation, border_percent=0.05):
 
 
 def prepare_image(image, adjust_contrast=False, denoise=True, blur=True):
+    """Applies given filters to the image with default values appropriate for
+    dicom images.
+
+    Arguments:
+        image {[type]} -- [description]
+
+    Keyword Arguments:
+        adjust_contrast {bool} -- [Wether the contrast should be raised] (default: {False})
+        denoise {bool} -- [Remove noise from the image] (default: {True})
+        blur {bool} -- [Blur the image with a medianBlur] (default: {True})
+
+    Returns:
+        [type] -- [description]
+    """
     if adjust_contrast:
         image = cv2.convertScaleAbs(image, alpha=1.3, beta=0)
 
