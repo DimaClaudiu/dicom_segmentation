@@ -53,6 +53,14 @@ def get_contour(segmentation):
 
 
 def clamp_to_byte(pixel):
+    """Clamps the input between 0-255
+    
+    Arguments:
+        pixel {float} -- The approximate value of an 8bit pixel
+    
+    Returns:
+        int -- The clamped value of the pixel casted to int
+    """
     if pixel < 0:
         pixel = 0
     elif pixel > 255:
