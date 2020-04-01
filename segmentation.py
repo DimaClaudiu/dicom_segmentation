@@ -153,25 +153,46 @@ def prepare_image(image, adjust_contrast=False, denoise=True, blur=True):
 
 
 def get_mask_watershed(image, thresh, aprox_seg, debug=False):
+    """Returns the mask of an accurate segmentation based on a
+    approximate segmentation and an aggresive threshold.
+    
+    Arguments:
+        image {[cv2 image]} -- [The image where the search will be perfomed]
+        thresh {[np 2d binary array]} -- [An aggresive threshold mask of the organ]
+        aprox_seg {[np 2d binary array]} -- [An aproximate segmentation of the organ]
+    
+    Keyword Arguments:
+        debug {bool} -- [Set True to see the full contours given by watershed] (default: {False})
+    
+    Returns:
+        [np 2d binary array] -- [An accurate mask of the organ]
+    """
     width, height = image.shape
 
-    sure_bg = np.zeros((width, height, 1), np.uint8)
+    # Part of mask we're "sure" is the organ
     sure_fg = np.zeros((width, height, 1), np.uint8)
+    # Part of mask we're "sure" isn't the organ
+    sure_bg = np.zeros((width, height, 1), np.uint8)
 
     boxes = []
     for i in range(width):
         for j in range(height):
             coord = i, j
             sure_bg[coord] = 255
+            # If it is part of an aggresive threshold,
+            # and part of an approximate contour, it should be the organ
             if aprox_seg[coord] and thresh[i][j]:
                 sure_fg[coord] = 255
                 boxes.append(coord)
+            # If it isn't part of either, it should be ignored
             elif not aprox_seg[coord] and not thresh[i][j]:
                 sure_bg[coord] = 0
 
+    # Parts we'll have to find what they are
     unknown = cv2.subtract(sure_bg, sure_fg)
 
     seed = boxes[-1]
+    # Get the markers for watershed
     ret, markers = cv2.connectedComponents(sure_fg)
 
     # Add one to all labels so that sure background is not 0, but 1
@@ -180,8 +201,15 @@ def get_mask_watershed(image, thresh, aprox_seg, debug=False):
     # Now, mark the region of unknown with zero
     markers[unknown == 255] = 0
 
+    # Wathershed only works with rgb images
     backtorgb = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+    # Watershed returnes markers of a background, and different foregrounds
     markers = cv2.watershed(backtorgb, markers)
+    
+    # In our case:
+    # 1 - Background
+    # 2 - The organ we're interested in
+    # 3... - Other organs or bones
 
     if debug:
         marked = backtorgb
@@ -189,6 +217,8 @@ def get_mask_watershed(image, thresh, aprox_seg, debug=False):
         cv2.imshow('markers', marked)
         cv2.waitKey()
 
+    # Since we started the search fron the organ, the first
+    # foreground region will be the organ of interest
     mask = np.zeros((width, height), np.uint8)
     for i in range(markers.shape[0]):
         for j in range(markers.shape[1]):
