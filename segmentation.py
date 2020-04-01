@@ -53,11 +53,11 @@ def get_contour(segmentation):
 
 
 def clamp_to_byte(pixel):
-    """Clamps the input between 0-255
-    
+    """Clamps the input between 0-255.
+
     Arguments:
         pixel {float} -- The approximate value of an 8bit pixel
-    
+
     Returns:
         int -- The clamped value of the pixel casted to int
     """
@@ -70,11 +70,25 @@ def clamp_to_byte(pixel):
 
 
 def extract_segmentation_as_image(layer, segmentation, border_percent=0.05):
+    """Convert part of a given dicom image into and 8bit image by converting
+    the spaces such that organ information isn't lost.
+
+    Arguments:
+        layer {[Hounsfield array]} -- [A dicom layer with a segmented organ]
+        segmentation {[np 2d binary array]} -- [A binary mask of the organ]
+
+    Keyword Arguments:
+        border_percent {float} -- [Add a percentage-based border to the segmentation] (default: {0.05})
+
+    Returns:
+        [(np 2d array, int, int)] -- [The segmented organ converted to 8bit color space, left-corner coordinates of the segmentation]
+    """
     rows, cols = layer.shape
 
     min_x = min_y = max(rows, cols)
     max_x = max_y = 0
 
+    # Finding the edges of the mask
     for i in range(rows):
         for j in range(cols):
             if segmentation[i, j]:
@@ -84,8 +98,10 @@ def extract_segmentation_as_image(layer, segmentation, border_percent=0.05):
                 min_y = min(min_y, j)
                 max_y = max(max_y, j)
 
+    #  Part of the organ might be outside the given mask, so we'll use a buffer
     border_size = max(max_x - min_x, max_y - min_y) * float(border_percent)
 
+    # Offseting the edges with the giiven bordersize
     min_x = int(max(min_x - border_size, 0))
     min_y = int(max(min_y - border_size, 0))
     max_x = int(min(max_x + border_size, rows))
@@ -94,7 +110,9 @@ def extract_segmentation_as_image(layer, segmentation, border_percent=0.05):
     width = max_x - min_x
     height = max_y - min_y
 
+    # Creating the segmented image
     minor_img = np.zeros((width, height), np.uint8)
+    # The average value of the organ will be in the middle of the 8bit colorspace to avoid data loss
     offset = int(avg_segmentation_value(layer, segmentation) - 256/2)
     for i in range(min_x, max_x):
         for j in range(min_y, max_y):
