@@ -9,11 +9,11 @@ from statistics import geometric_mean
 
 def avg_segmentation_value(layer, segmentation):
     """Returns the geometric mean of the segmented part of the layer.
-    
+
     Arguments:
         layer {np 2d array} -- Dicom image of an organ
         segmentation {np 2d binary array} -- Approximate contour of an organ inside layer
-    
+
     Returns:
         float -- The geometric mean of the segemnted organs values.
     """
@@ -29,6 +29,14 @@ def avg_segmentation_value(layer, segmentation):
 
 
 def get_contour(segmentation):
+    """Gets the countour of a binary mask.
+
+    Arguments:
+        segmentation {np 2d array} -- The mask of an object
+
+    Returns:
+        np 2d binary array -- The contour of the given mask.
+    """
     width, height = segmentation.shape
     contour = np.zeros((width, height), np.uint8)
 
@@ -38,7 +46,7 @@ def get_contour(segmentation):
                 for i in (-1, 0, 1):
                     for j in (-1, 0, 1):
                         if segmentation[x+i, y+j] == 0:
-                            contour[x, y] = 255
+                            contour[x, y] = 1
                             break
 
     return contour
