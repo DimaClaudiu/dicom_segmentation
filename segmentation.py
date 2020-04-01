@@ -170,7 +170,38 @@ def smooth_edges(image, ksize):
     return smoothed[bordersize:bordersize+width, bordersize:bordersize+height]
 
 
-def show_mask(img_path, mask):
+def extract_mask(dicom_array, segmentation_array, sensitivity=0.7, ksize=(4,4), debug=False):
+    minor_img, min_x, min_y = extract_segmentation_as_image(
+        dicom_array, segmentation_array, border_percent=0.05)
+
+    min_width, min_height = minor_img.shape
+
+    adjusted = prepare_image(minor_img, blur=True)
+
+    adjusted_avg = avg_segmentation_value(
+        minor_img, segmentation_array[min_x:min_x+min_width, min_y:min_y+min_height])
+
+
+    epsilon = sensitivity * 100
+    thresh = cv2.inRange(adjusted, adjusted_avg, adjusted_avg + epsilon)
+
+
+    kernel = np.ones((3, 3), np.uint8)
+    thresh = cv2.erode(thresh, kernel, iterations=3)
+
+    water = get_mask_watershed(
+        adjusted, thresh, segmentation_array[min_x:min_x+min_width, min_y:min_y+min_height], debug=debug)
+
+
+    mask = smooth_edges(water*255, ksize)
+
+    major_mask = np.zeros(dicom_array.shape, np.uint8)
+    major_mask[min_x:min_x+min_width, min_y:min_y+min_height] = mask
+    
+    return major_mask
+    
+
+def overlay_mask(img_path, mask):
         dicom = cv2.imread(img_path)
 
         width, height = mask.shape
