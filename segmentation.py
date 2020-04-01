@@ -93,8 +93,6 @@ def prepare_image(image, adjust_contrast=False, denoise=True, blur=True):
         image = cv2.fastNlMeansDenoising(image, None, 20, 7, 21)
 
     if blur:
-        # image = cv2.blur(image, (2, 2))
-        # image = cv2.GaussianBlur(image, (2, 2), 0)
         image = cv2.medianBlur(image, 5)
 
     if adjust_contrast:
@@ -103,7 +101,7 @@ def prepare_image(image, adjust_contrast=False, denoise=True, blur=True):
     return image
 
 
-def get_mask_watershed(image, thresh, aprox_seg):
+def get_mask_watershed(image, thresh, aprox_seg, debug=False):
     width, height = image.shape
 
     sure_bg = np.zeros((width, height, 1), np.uint8)
@@ -134,10 +132,11 @@ def get_mask_watershed(image, thresh, aprox_seg):
     backtorgb = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
     markers = cv2.watershed(backtorgb, markers)
 
-    marked = backtorgb
-    marked[markers == -1] = [0, 255, 0]
-    cv2.imshow('markers', marked)
-    cv2.waitKey()
+    if debug:
+        marked = backtorgb
+        marked[markers == -1] = [0, 255, 0]
+        cv2.imshow('markers', marked)
+        cv2.waitKey()
 
     mask = np.zeros((width, height), np.uint8)
     for i in range(markers.shape[0]):
@@ -148,8 +147,8 @@ def get_mask_watershed(image, thresh, aprox_seg):
     return mask
 
 
-def smooth_edges(image, strength=3):
-    kernel = np.ones((4, 4), np.uint8)
+def smooth_edges(image, ksize):
+    kernel = np.ones(ksize, np.uint8)
     width, height = image.shape
 
     bordersize = int(0.2 * width)
@@ -162,24 +161,21 @@ def smooth_edges(image, strength=3):
         borderType=cv2.BORDER_CONSTANT,
         value=[0, 0, 0]
     )
-    # cv2.imshow('brd', smoothed)
-    # cv2.waitKey()
 
     smoothed = cv2.dilate(smoothed, kernel, iterations=1)
 
-    smoothed = cv2.blur(smoothed, (6, 6))
+    smoothed = cv2.blur(smoothed, ksize)
 
     ret, smoothed = cv2.threshold(
         smoothed, 128, 255, cv2.THRESH_BINARY)
 
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (8, 8))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, ksize)
     ret, smoothed = cv2.threshold(smoothed, 128, 255, cv2.THRESH_BINARY)
     smoothed = cv2.morphologyEx(smoothed, cv2.MORPH_OPEN, kernel, iterations=2)
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, ksize)
     smoothed = cv2.morphologyEx(
         smoothed, cv2.MORPH_CLOSE, kernel, iterations=2)
-
-    cv2.imshow('smooth', smoothed)
-    cv2.waitKey()
 
     return smoothed[bordersize:bordersize+width, bordersize:bordersize+height]
 
@@ -211,17 +207,13 @@ def main():
 
     adjusted = prepare_image(minor_img, blur=True)
 
-    cv2.imshow('adj', adjusted)
-    cv2.waitKey()
-
     adjusted_avg = avg_segmentation_value(
         minor_img, seg[min_x:min_x+min_width, min_y:min_y+min_height])
 
+  
     epsilon = 70
     thresh = cv2.inRange(adjusted, adjusted_avg, adjusted_avg + epsilon)
 
-    cv2.imshow('adj', thresh)
-    cv2.waitKey()
 
     kernel = np.ones((3, 3), np.uint8)
     thresh = cv2.erode(thresh, kernel, iterations=3)
@@ -229,16 +221,11 @@ def main():
     water = get_mask_watershed(
         adjusted, thresh, seg[min_x:min_x+min_width, min_y:min_y+min_height])
 
-    cv2.imshow('water', water*255)
-    cv2.waitKey()
 
-    mask = smooth_edges(water*255)
+    mask = smooth_edges(water*255, (6, 6))
 
     major_mask = np.zeros(layer.shape, np.uint8)
     major_mask[min_x:min_x+min_width, min_y:min_y+min_height] = mask
-
-    # cv2.imshow('mjr_msk', major_mask)
-    # cv2.waitKey()
 
     show_mask(test_dir + 'dicom.png', major_mask)
 
