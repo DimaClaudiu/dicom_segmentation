@@ -11,8 +11,7 @@ def read_input(dicom_file_path, seg_file_path):
 
     return array, seg
 
-def main():
-        test_dir = 'tests/input1/'
+def test_input(test_dir):
         layer, seg = read_input(test_dir + 'in.in', test_dir + 'seg.in')
 
         mask = extract_mask(layer, seg, sensitivity=0.7, ksize=(4,4), debug=True)
@@ -21,4 +20,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    for i in range(4):
+        test_input('tests/input' + str(i+1) + '/')
