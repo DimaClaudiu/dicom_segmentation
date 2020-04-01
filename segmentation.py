@@ -293,12 +293,20 @@ def extract_mask(dicom_array, segmentation_array, sensitivity=0.7, ksize=(4,4), 
     minor_img, min_x, min_y = extract_segmentation_as_image(
         dicom_array, segmentation_array, border_percent=0.05)
     
+    if debug:
+        cv2.imshow('Extracted',minor_img)
+        cv2.waitKey()
+    
     # We'll use only a part of the image since it makes the process faster and
     # less prone to false negatives
     min_width, min_height = minor_img.shape
 
     # Apply filters to the image for better thresholding and segmentation
     adjusted = prepare_image(minor_img, adjust_contrast=False)
+    
+    if debug:
+        cv2.imshow('Adjusted',adjusted)
+        cv2.waitKey()
 
     # Get the average value of the top-most values of the approximate segmentation
     adjusted_avg = avg_segmentation_value(
@@ -325,17 +333,27 @@ def extract_mask(dicom_array, segmentation_array, sensitivity=0.7, ksize=(4,4), 
     major_mask[min_x:min_x+min_width, min_y:min_y+min_height] = mask
     
     return major_mask
-    
+
 
 def overlay_mask(img_path, mask):
-        dicom = cv2.imread(img_path)
+    """Overlays the mask over an input image source for better visualization.
 
-        width, height = mask.shape
+    Arguments:
+        img_path {string} -- Path to an image representation of the dicom file
+        mask {np 2d binary array} -- Mask of the organ to be overlayedzation.
 
-        for i in range(width):
-            for j in range(height):
-                if mask[i, j]:
-                    dicom[i, j] = [0, 60, 0]
+    Arguments:
+        img_path {string} -- Path to an image representation of the dicom file
+        mask {np 2d binary array} -- Mask of the organ to be overlayed
+    """
+    dicom = cv2.imread(img_path)
 
-        cv2.imshow('final', dicom)
-        cv2.waitKey()
+    width, height = mask.shape
+
+    for i in range(width):
+        for j in range(height):
+            if mask[i, j]:
+                dicom[i, j] = [0, 60, 0]
+
+    cv2.imshow('final', dicom)
+    cv2.waitKey()
