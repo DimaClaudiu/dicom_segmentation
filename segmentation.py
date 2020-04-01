@@ -205,7 +205,7 @@ def get_mask_watershed(image, thresh, aprox_seg, debug=False):
     backtorgb = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
     # Watershed returnes markers of a background, and different foregrounds
     markers = cv2.watershed(backtorgb, markers)
-    
+
     # In our case:
     # 1 - Background
     # 2 - The organ we're interested in
@@ -273,7 +273,7 @@ def smooth_edges(mask, ksize):
     return smoothed[bordersize:bordersize+width, bordersize:bordersize+height]
 
 
-def extract_mask(dicom_array, segmentation_array, sensitivity=0.7, ksize=(4,4), debug=False):
+def extract_mask(dicom_array, segmentation_array, sensitivity=0.7, ksize=(4, 4), debug=False):
     """Default procedure for extracting a organ mask from a dicom array.
 
     Arguments:
@@ -288,24 +288,24 @@ def extract_mask(dicom_array, segmentation_array, sensitivity=0.7, ksize=(4,4), 
     Returns:
         [np 2d binary array] -- [Returns the accurate segmetation of the organ]
     """
-    
+
     # First extract the organ and convert it to 8bit color space
     minor_img, min_x, min_y = extract_segmentation_as_image(
         dicom_array, segmentation_array, border_percent=0.05)
-    
+
     if debug:
-        cv2.imshow('Extracted',minor_img)
+        cv2.imshow('Extracted', minor_img)
         cv2.waitKey()
-    
+
     # We'll use only a part of the image since it makes the process faster and
     # less prone to false negatives
     min_width, min_height = minor_img.shape
 
     # Apply filters to the image for better thresholding and segmentation
     adjusted = prepare_image(minor_img, adjust_contrast=False)
-    
+
     if debug:
-        cv2.imshow('Adjusted',adjusted)
+        cv2.imshow('Adjusted', adjusted)
         cv2.waitKey()
 
     # Get the average value of the top-most values of the approximate segmentation
@@ -313,7 +313,7 @@ def extract_mask(dicom_array, segmentation_array, sensitivity=0.7, ksize=(4,4), 
         minor_img, segmentation_array[min_x:min_x+min_width, min_y:min_y+min_height])
 
     # We'll use it to have a guess at the organ ourselves
-    # This should be an aggresive guess, 
+    # This should be an aggresive guess,
     # since it will drive the waterhsed algorithm's starting points later
     epsilon = sensitivity * 100
     thresh = cv2.inRange(adjusted, adjusted_avg, adjusted_avg + epsilon)
@@ -325,13 +325,12 @@ def extract_mask(dicom_array, segmentation_array, sensitivity=0.7, ksize=(4,4), 
     water_mask = get_mask_watershed(
         adjusted, thresh, segmentation_array[min_x:min_x+min_width, min_y:min_y+min_height], debug=debug)
 
-
     mask = smooth_edges(water_mask*255, ksize)
 
     # Scale the mask up to the original size
     major_mask = np.zeros(dicom_array.shape, np.uint8)
-    major_mask[min_x:min_x+min_width, min_y:min_y+min_height] = mask
-    
+    major_mask[min_x:min_x+min_width, min_y:min_y+min_height] = mask/255
+
     return major_mask
 
 
@@ -357,3 +356,15 @@ def overlay_mask(img_path, mask):
 
     cv2.imshow('final', dicom)
     cv2.waitKey()
+
+
+def write_mask(path, mask):
+    """
+    Writes the mask to the given path in a space separated, row-wise manner.
+    """
+    width, height = mask.shape
+    with open(path, 'w') as f:
+        for i in range(width):
+            for j in range(height):
+                f.write(str(mask[i, j]) + ' ')
+            f.write('\n')
