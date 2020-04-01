@@ -122,7 +122,7 @@ def extract_segmentation_as_image(layer, segmentation, border_percent=0.05):
     return minor_img, min_x, min_y
 
 
-def prepare_image(image, adjust_contrast=False, denoise=True, blur=True):
+def prepare_image(image, adjust_contrast=True, denoise=True, blur=True):
     """Applies given filters to the image with default values appropriate for
     dicom images.
 
@@ -274,30 +274,53 @@ def smooth_edges(mask, ksize):
 
 
 def extract_mask(dicom_array, segmentation_array, sensitivity=0.7, ksize=(4,4), debug=False):
+    """Default procedure for extracting a organ mask from a dicom array.
+
+    Arguments:
+        dicom_array {np 2d array} -- [A dicom array in Hounsfield units]
+        segmentation_array {[type]} -- [An approximate contour of the organ of interest]
+
+    Keyword Arguments:
+        sensitivity {float} -- [How aggresive the inital guess of the organ should be] (default: {0.7})
+        ksize {tuple} -- [Controls how smooth the resulting mask will be] (default: {(4,4)})
+        debug {bool} -- [Set True to see each step of the process] (default: {False})
+
+    Returns:
+        [np 2d binary array] -- [Returns the accurate segmetation of the organ]
+    """
+    
+    # First extract the organ and convert it to 8bit color space
     minor_img, min_x, min_y = extract_segmentation_as_image(
         dicom_array, segmentation_array, border_percent=0.05)
-
+    
+    # We'll use only a part of the image since it makes the process faster and
+    # less prone to false negatives
     min_width, min_height = minor_img.shape
 
-    adjusted = prepare_image(minor_img, blur=True)
+    # Apply filters to the image for better thresholding and segmentation
+    adjusted = prepare_image(minor_img, adjust_contrast=False)
 
+    # Get the average value of the top-most values of the approximate segmentation
     adjusted_avg = avg_segmentation_value(
         minor_img, segmentation_array[min_x:min_x+min_width, min_y:min_y+min_height])
 
-
+    # We'll use it to have a guess at the organ ourselves
+    # This should be an aggresive guess, 
+    # since it will drive the waterhsed algorithm's starting points later
     epsilon = sensitivity * 100
     thresh = cv2.inRange(adjusted, adjusted_avg, adjusted_avg + epsilon)
 
-
+    # Erode any little artifacts and enforce separation of organs
     kernel = np.ones((3, 3), np.uint8)
     thresh = cv2.erode(thresh, kernel, iterations=3)
 
-    water = get_mask_watershed(
+    water_mask = get_mask_watershed(
         adjusted, thresh, segmentation_array[min_x:min_x+min_width, min_y:min_y+min_height], debug=debug)
 
 
-    mask = smooth_edges(water*255, ksize)
+    mask = smooth_edges(water_mask*255, ksize)
 
+    # Scale the mask up to the original size
     major_mask = np.zeros(dicom_array.shape, np.uint8)
     major_mask[min_x:min_x+min_width, min_y:min_y+min_height] = mask
     
