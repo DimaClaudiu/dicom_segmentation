@@ -174,7 +174,6 @@ def get_mask_watershed(image, thresh, aprox_seg, debug=False):
     # Part of mask we're "sure" isn't the organ
     sure_bg = np.zeros((width, height, 1), np.uint8)
 
-    boxes = []
     for i in range(width):
         for j in range(height):
             coord = i, j
@@ -183,7 +182,6 @@ def get_mask_watershed(image, thresh, aprox_seg, debug=False):
             # and part of an approximate contour, it should be the organ
             if aprox_seg[coord] and thresh[i][j]:
                 sure_fg[coord] = 255
-                boxes.append(coord)
             # If it isn't part of either, it should be ignored
             elif not aprox_seg[coord] and not thresh[i][j]:
                 sure_bg[coord] = 0
@@ -191,9 +189,8 @@ def get_mask_watershed(image, thresh, aprox_seg, debug=False):
     # Parts we'll have to find what they are
     unknown = cv2.subtract(sure_bg, sure_fg)
 
-    seed = boxes[-1]
     # Get the markers for watershed
-    ret, markers = cv2.connectedComponents(sure_fg)
+    _, markers = cv2.connectedComponents(sure_fg)
 
     # Add one to all labels so that sure background is not 0, but 1
     markers = markers+1
@@ -258,12 +255,12 @@ def smooth_edges(mask, ksize):
     smoothed = cv2.blur(smoothed, tuple([2*x for x in ksize]))
 
     # Thresholding gives integer values from the blurs approximates
-    ret, smoothed = cv2.threshold(
+    _, smoothed = cv2.threshold(
         smoothed, 128, 255, cv2.THRESH_BINARY)
 
     # First open the edges and then close all the artifacts and unsual holes
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, ksize)
-    ret, smoothed = cv2.threshold(smoothed, 128, 255, cv2.THRESH_BINARY)
+    _, smoothed = cv2.threshold(smoothed, 128, 255, cv2.THRESH_BINARY)
     smoothed = cv2.morphologyEx(smoothed, cv2.MORPH_OPEN, kernel, iterations=2)
 
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, ksize)
