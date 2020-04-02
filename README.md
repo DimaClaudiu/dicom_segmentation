@@ -1,4 +1,4 @@
-# DICOM_segmentation
+# DICOM Sgmentation
 A simple python program that tries to give an accurate organ segmentation
 from an approximate contour.
 
@@ -75,6 +75,8 @@ Probleme care au apărut:
 - Așa că am încercat un region growring algorithm classic scris de mine, și era cel mai bun lucru de până acum, însă nu perfect, căutând să-l îmbunătățesc am aflat de Watershed algorithm, implementat în opencv2, care face exact ceea ce mi-am dorit, și de acolo am contiuat programul.
 - Cele mai mari probleme cu Watershed au fost găsirea lui "sure_fg", adică părțile din imagine care sunt sigur că fac parte din organ, până nu mi-am făcut segmentarea mai agresivă și am crescut separația între organe, nu aveam rezultatele dorite.
 - Apoi ultima problemă a fost că masca primită era foarte rough, și avea nevoie de smoothing pe margini, însă asta îi poate afecta și structura în sine, aici a fost nevoie de tweaking, și încă mai este.
+
+Pentru mai multe organe în același fișier, se poate aplica algoritmul de două ori pe acealași fișier dicom cu două contururi diferite și să se facă bitwise_or între măști.
 
 Sper că am acoperit tot :D
 
