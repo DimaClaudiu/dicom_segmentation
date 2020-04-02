@@ -10,4 +10,9 @@ cv2
 
 ### Examples
 
-![](example/1_adj.png)
+<img src="examples/1_org.png" alt="drawing" width="250"/> ->  <img src="examples/1_seg.png" alt="drawing" width="150"/> -> <img src="examples/1_adj.png" alt="drawing" width="150"/> -> <img src="examples/1_mrk.png" alt="drawing" width="150"/> -> <img src="examples/1_ovrl.png" alt="drawing" width="250"/>  
+
+
+<img src="examples/3_org.png" alt="drawing" width="250"/> -> <img src="examples/3_mrk.png" alt="drawing" width="150"/> ->  <img src="examples/3_ovrl.png" alt="drawing" width="250"/>
+
+<img src="examples/4_org.png" alt="drawing" width="250"/> -> <img src="examples/4_mrk.png" alt="drawing" width="150"/> ->  <img src="examples/4_ovrl.png" alt="drawing" width="250"/>
