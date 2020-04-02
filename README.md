@@ -44,7 +44,7 @@ Adjusting the contrast seems to give bad results in my experince, so in the test
 <img src="examples/1_adj.png" alt="drawing" width="125"/>
 
 3. Now it'll be getting the average organ value of the processed image and use that for thresholding the organ. This is "our guess" of the organ, and it should be an aggressive guess since it will drive the watershed algortihm later.
-<img src="examples/3_thrsh.png" alt="drawing" width="125"/>
+<img src="examples/1_thrsh.png" alt="drawing" width="125"/>
 
 - Also in this step it'll apply an erosion to the threshold mask to remove any little artifacts and enforce separation of the organs.
 
