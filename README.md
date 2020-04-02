@@ -1,4 +1,4 @@
-# DICOM_segmentation
+# DICOM Sgmentation
 A simple python program that tries to give an accurate organ segmentation
 from an approximate contour.
 
