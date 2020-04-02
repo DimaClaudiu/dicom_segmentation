@@ -74,14 +74,14 @@ def extract_segmentation_as_image(layer, segmentation, border_percent=0.05):
     the spaces such that organ information isn't lost.
 
     Arguments:
-        layer {[Hounsfield array]} -- [A dicom layer with a segmented organ]
-        segmentation {[np 2d binary array]} -- [A binary mask of the organ]
+        layer {Hounsfield array} -- A dicom layer with a segmented organ
+        segmentation {np 2d binary array} -- A binary mask of the organ
 
     Keyword Arguments:
-        border_percent {float} -- [Add a percentage-based border to the segmentation] (default: {0.05})
+        border_percent {float} -- Add a percentage-based border to the segmentation (default: {0.05})
 
     Returns:
-        [(np 2d array, int, int)] -- [The segmented organ converted to 8bit color space, left-corner coordinates of the segmentation]
+        [(np 2d array, int, int)] -- The segmented organ converted to 8bit color space, left-corner coordinates of the segmentation
     """
     rows, cols = layer.shape
 
@@ -127,15 +127,15 @@ def prepare_image(image, adjust_contrast=True, denoise=True, blur=True):
     dicom images.
 
     Arguments:
-        image {[type]} -- [description]
+        image {cv2 image} -- Image to be filtered
 
     Keyword Arguments:
-        adjust_contrast {bool} -- [Wether the contrast should be raised] (default: {False})
-        denoise {bool} -- [Remove noise from the image] (default: {True})
-        blur {bool} -- [Blur the image with a medianBlur] (default: {True})
+        adjust_contrast {bool} -- Wether the contrast should be raised (default: {False})
+        denoise {bool} -- Remove noise from the image (default: {True})
+        blur {bool} -- Blur the image with a medianBlur (default: {True})
 
     Returns:
-        [type] -- [description]
+        [cv2 image] -- The filtered image
     """
     if adjust_contrast:
         image = cv2.convertScaleAbs(image, alpha=1.3, beta=0)
@@ -157,15 +157,15 @@ def get_mask_watershed(image, thresh, aprox_seg, debug=False):
     segmentation and an aggresive threshold.
 
     Arguments:
-        image {[cv2 image]} -- [The image where the search will be perfomed]
-        thresh {[np 2d binary array]} -- [An aggresive threshold mask of the organ]
-        aprox_seg {[np 2d binary array]} -- [An aproximate segmentation of the organ]
+        image {cv2 image} -- The image where the search will be perfomed
+        thresh {np 2d binary array} -- An aggresive threshold mask of the organ
+        aprox_seg {np 2d binary array} -- An aproximate segmentation of the organ
 
     Keyword Arguments:
-        debug {bool} -- [Set True to see the full contours given by watershed] (default: {False})
+        debug {bool} -- Set True to see the full contours given by watershed (default: {False})
 
     Returns:
-        [np 2d binary array] -- [An accurate mask of the organ]
+        np 2d binary array -- An accurate mask of the organ
     """
     width, height = image.shape
 
@@ -232,11 +232,11 @@ def smooth_edges(mask, ksize):
     """Smoothes the edges and closes unsual holes inside organs.
 
     Arguments:
-        mask {[np 2d binary array]} -- [A mask to be cleanned up]
-        ksize {[int touple]} -- [Kernel size, higher values will result in more aggresive smoothing]
+        mask {np 2d binary array} -- A mask to be cleanned up
+        ksize {int touple} -- Kernel size, higher values will result in more aggresive smoothing
 
     Returns:
-        [np 2d binary array] -- [A cleaned up version of the mask]
+        np 2d binary array -- A cleaned up version of the mask
     """
     kernel = np.ones(ksize, np.uint8)
     width, height = mask.shape
@@ -277,16 +277,16 @@ def extract_mask(dicom_array, segmentation_array, sensitivity=0.7, ksize=(4, 4),
     """Default procedure for extracting a organ mask from a dicom array.
 
     Arguments:
-        dicom_array {np 2d array} -- [A dicom array in Hounsfield units]
-        segmentation_array {[type]} -- [An approximate contour of the organ of interest]
+        dicom_array {np 2d array} -- A dicom array in Hounsfield units
+        segmentation_array {np 2d binary array} -- An approximate contour of the organ of interest
 
     Keyword Arguments:
-        sensitivity {float} -- [How aggresive the inital guess of the organ should be] (default: {0.7})
-        ksize {tuple} -- [Controls how smooth the resulting mask will be] (default: {(4,4)})
-        debug {bool} -- [Set True to see each step of the process] (default: {False})
+        sensitivity {float} -- How aggresive the inital guess of the organ should be (default: {0.7})
+        ksize {tuple} -- Controls how smooth the resulting mask will be (default: {(4,4)})
+        debug {bool} -- Set True to see each step of the process (default: {False})
 
     Returns:
-        [np 2d binary array] -- [Returns the accurate segmetation of the organ]
+        np 2d binary array -- Returns the accurate segmetation of the organ
     """
 
     # First extract the organ and convert it to 8bit color space
@@ -314,9 +314,13 @@ def extract_mask(dicom_array, segmentation_array, sensitivity=0.7, ksize=(4, 4),
 
     # We'll use it to have a guess at the organ ourselves
     # This should be an aggresive guess,
-    # since it will drive the waterhsed algorithm's starting points later
+    # since it will drive the watershed algorithm's starting points later
     epsilon = sensitivity * 100
     thresh = cv2.inRange(adjusted, adjusted_avg, adjusted_avg + epsilon)
+
+    if debug:
+        cv2.imshow('Thresh', thresh)
+        cv2.waitKey()
 
     # Erode any little artifacts and enforce separation of organs
     kernel = np.ones((3, 3), np.uint8)
