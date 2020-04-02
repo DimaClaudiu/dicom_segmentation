@@ -17,7 +17,7 @@ def test_input(test_dir):
 
     mask = extract_mask(layer, seg, sensitivity=0.7, ksize=(4, 4), debug=True)
 
-    write_mask(test_dir + 'my_seg.out', mask)
+    write_mask(test_dir + 'optim.out', mask)
     overlay_mask(test_dir + 'dicom.png', mask)
 
 
