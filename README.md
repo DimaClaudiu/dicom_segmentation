@@ -10,7 +10,7 @@ cv2
 
 ### Examples
 
-<img src="examples/1_org.png" alt="drawing" width="250"/> ->  <img src="examples/1_seg.png" alt="drawing" width="150"/> -> <img src="examples/1_adj.png" alt="drawing" width="150"/> -> <img src="examples/1_mrk.png" alt="drawing" width="150"/> -> <img src="examples/1_ovrl.png" alt="drawing" width="250"/>  
+<img src="examples/1_org.png" alt="drawing" width="225"/> ->  <img src="examples/1_seg.png" alt="drawing" width="125"/> -> <img src="examples/1_adj.png" alt="drawing" width="125"/> -> <img src="examples/1_mrk.png" alt="drawing" width="125"/> -> <img src="examples/1_ovrl.png" alt="drawing" width="225"/>  
 
 
 <img src="examples/3_org.png" alt="drawing" width="250"/> -> <img src="examples/3_mrk.png" alt="drawing" width="150"/> ->  <img src="examples/3_ovrl.png" alt="drawing" width="250"/>
