@@ -68,12 +68,12 @@ Am încercat să imit acest lucru prin a face un morphological closing la final,
 
 Probleme care au apărut:
 - Inițial am gândit o abordare ML cu rețele neurale însă vorbind cu voi nu am mai aplicat idea.
-- La început am încercat să mă plimb de-a lungul conturului și pornind de acolo să găsesc ce părți ar trebui să facă parte din organ, și care nu, însă rezultatele erau foarte insonsistente.
-- Apoi imediat am încercat un simplu threshold, dar asta clar adăuga prea mult sau prea puțin din organ, și nu se folosea aproape deloc de faptul că am un contur aporximativ.
+- La început am încercat să mă plimb de-a lungul conturului și pornind de acolo să găsesc ce părți ar trebui să facă parte din organ, și care nu, însă rezultatele erau foarte inconsistente.
+- Apoi imediat am încercat un simplu threshold, dar asta clar adăuga prea mult sau prea puțin din organ, și nu se folosea aproape deloc de faptul că am un contur aporximativ la dispoziție.
 - Am încercat și thresholding adaptiv însă a mers și mai rău decât cel simplu, ori îmi lua toate lucrurile din imagine, ori nimic.
 - Am încercat și să mă folosesc de 'snakes' prin funcția active_contour din skimage, însă segmentele de input erau greu de calculat și aveau rezultate inconsistente.
 - Apoi am încercat algoritmi de tipul random walker, care au fost primul lucru ok însă erau foarte foarte înceți.
-- Așa că am încercat un region growring algorithm classic scris de mine, și era cel mai bun lucru de până acum, însă nu perfect, căutând să-l îmbunătățesc am aflat de Watershed algorithm, implementat în opencv2, care face exact ceea ce mi-am dorit, și de acolo am contiuat programul.
+- Așa că am încercat un region growing algorithm classic scris de mine, și era cel mai bun lucru de până acum, însă nu perfect, căutând să-l îmbunătățesc am aflat de Watershed algorithm, implementat în opencv2, care face exact ceea ce mi-am dorit, și de acolo am contiuat programul.
 - Cele mai mari probleme cu Watershed au fost găsirea lui "sure_fg", adică părțile din imagine care sunt sigur că fac parte din organ, până nu mi-am făcut segmentarea mai agresivă și am crescut separația între organe, nu aveam rezultatele dorite.
 - Apoi ultima problemă a fost că masca primită era foarte rough, și avea nevoie de smoothing pe margini, însă asta îi poate afecta și structura în sine, aici a fost nevoie de tweaking, și încă mai este.
 
