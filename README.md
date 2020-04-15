@@ -8,7 +8,7 @@ numpy
 cv2
 ```
 
-### Examples
+## Examples
 
 <img src="examples/1_org.png" alt="drawing" width="225"/> ->  <img src="examples/1_seg.png" alt="drawing" width="100"/> -> <img src="examples/1_adj.png" alt="drawing" width="100"/> -> <img src="examples/1_mrk.png" alt="drawing" width="100"/> -> <img src="examples/1_ovrl.png" alt="drawing" width="225"/>  
 
@@ -19,7 +19,7 @@ cv2
 <img src="examples/4_org.png" alt="drawing" width="250"/> -> <img src="examples/4_mrk.png" alt="drawing" width="150"/> ->  <img src="examples/4_ovrl.png" alt="drawing" width="250"/>
 
 
-### Getting Started
+## Getting Started
 This module provides a method ```extract_mask``` that expects a numpy array of the dicom file, and a numpy array for the segmentation.
 You can also provide a ```sensitivity```for the organ detection, it directly controls the thresholding range;
 lower values will result in less false positives, but also might make the segmentation incomplete.
@@ -28,7 +28,29 @@ A value for the ```kernel_size``` can also be provided, this controls the smooth
 The method retuns a mask of the accurate organ segmentation, this mask can be then feed into ```write_mask``` and ```overlay_mask```
 to save the result and preview it over an input image.
 
-### Implementation
+## Usage
+Run test cases:
+```python
+test.py # runs the program on default test cases 
+```
+
+Custom inputs:
+```python
+# read the two matrices
+layer, seg = read_input(path_to_dicom_file, path_to_segmentation_file)
+
+# extract the mask
+mask = extract_mask(layer, seg, sensitivity=0.7, ksize=(4, 4), debug=True)
+
+# write the mask to a file
+write_mask(output_path + 'optim.out', mask)
+
+# optinally see an overlay of how the algorithm performed
+overlay_mask(path_to_dicom_png, mask)
+```
+
+
+## Implementation
 1. In order to extract the mask, we first extract a subarray from the input array to process, this subarray contains the organ and a buffer border,
 since edges might've been cut in the approximate contour. This is done to make the processing faster and avoid any confusion when thresholding.
  <img src="examples/1_seg.png" alt="drawing" width="125"/> 
@@ -62,22 +84,3 @@ This will dilate and blur the mask, and perform morphological openings and closi
 This step can also make and break the final segmentation and should be further tweaked and improved upon.
 
 <img src="examples/1_ovrl.png" alt="drawing" width="250"/>
-
-Note*: Bună, o să scriu aici ca să nu fie nevoie de două locuri pentru readme, am observat că în segmentările optime primite de la voi, majoritatea deschizăturilor concave sunt închise, deși din input pare că acolo nu ar fi parte din organ. Îmi imaginez că un organ nu are deschizături ciudate așa că e normal, însă am preferat să nu îmi dau cu părerea legat de cum arată un ficat segmentat ^^;.
-Am încercat să imit acest lucru prin a face un morphological closing la final, însă asta și tinde să acopere detaliile subțiri de la marginile organului. Voiam să vă zic cum am gândit și de ce am ales să fac așa, deși poate nu este chiar corect.
-
-Probleme care au apărut:
-- Inițial am gândit o abordare ML cu rețele neurale însă vorbind cu voi nu am mai aplicat idea.
-- La început am încercat să mă plimb de-a lungul conturului și pornind de acolo să găsesc ce părți ar trebui să facă parte din organ, și care nu, însă rezultatele erau foarte inconsistente.
-- Apoi imediat am încercat un simplu threshold, dar asta clar adăuga prea mult sau prea puțin din organ, și nu se folosea aproape deloc de faptul că am un contur aporximativ la dispoziție.
-- Am încercat și thresholding adaptiv însă a mers și mai rău decât cel simplu, ori îmi lua toate lucrurile din imagine, ori nimic.
-- Am încercat și să mă folosesc de 'snakes' prin funcția active_contour din skimage, însă segmentele de input erau greu de calculat și aveau rezultate inconsistente.
-- Apoi am încercat algoritmi de tipul random walker, care au fost primul lucru ok însă erau foarte foarte înceți.
-- Așa că am încercat un region growing algorithm classic scris de mine, și era cel mai bun lucru de până acum, însă nu perfect, căutând să-l îmbunătățesc am aflat de Watershed algorithm, implementat în opencv2, care face exact ceea ce mi-am dorit, și de acolo am contiuat programul.
-- Cele mai mari probleme cu Watershed au fost găsirea lui "sure_fg", adică părțile din imagine care sunt sigur că fac parte din organ, până nu mi-am făcut segmentarea mai agresivă și am crescut separația între organe, nu aveam rezultatele dorite.
-- Apoi ultima problemă a fost că masca primită era foarte rough, și avea nevoie de smoothing pe margini, însă asta îi poate afecta și structura în sine, aici a fost nevoie de tweaking, și încă mai este.
-
-Pentru mai multe organe în același fișier, se poate aplica algoritmul de două ori pe acealași fișier dicom cu două contururi diferite și să se facă bitwise_or între măști.
-
-Sper că am acoperit tot :D
-
